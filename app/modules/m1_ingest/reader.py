@@ -3,7 +3,7 @@ from app.errors import DomainError
 from app.config import REQUIRED
 from app.modules.m1_ingest.decode import decode
 
-def read(raw):
+def read(raw, source='base'):
     text,encoding=decode(raw)
     if not text:raise DomainError('EMPTY_FILE','文件为空')
     if not text.strip():raise DomainError('BLANK_FILE','文件仅含空行')
@@ -17,8 +17,9 @@ def read(raw):
             out['input_count']+=1;line=reader.line_num
             if not row or not any(s.strip() for s in row):out['blank_count']+=1;continue
             if row==header:out['header_count']+=1;continue
-            if len(row)!=len(header):out['quarantine'].append({'line':line,'id':'','code':'WIDTH','raw':row});continue
-            item=dict(zip(header,row));item['_line']=line;item['_raw']=dict(item);out['rows'].append(item)
+            if len(row)!=len(header):
+                out['quarantine'].append({'source':source,'stage':1,'line':line,'id':'','code':'WIDTH','raw':row});continue
+            item=dict(zip(header,row));item['_line']=line;item['_source']=source;item['_raw']=dict(item);out['rows'].append(item)
     except csv.Error as exc:raise DomainError('CSV',str(exc))
     if out['input_count']==0:raise DomainError('HEADER_ONLY','文件仅含表头')
     return out

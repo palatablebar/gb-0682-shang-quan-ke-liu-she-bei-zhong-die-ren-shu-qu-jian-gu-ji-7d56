@@ -25,3 +25,8 @@ def run(content,parameters=None,stage=7):
         from app.modules.m7_archive.export_out import checksum
         state['archive']['sha256']=checksum(state)
     return state
+
+def supplement(base, content, parameters=None):
+    """补发：只重算受影响的 UTC 小时桶，其余沿用原批次结论。"""
+    from app.modules.m5_calculate.increment import supplement as incremental
+    return incremental(base, content, parameters)

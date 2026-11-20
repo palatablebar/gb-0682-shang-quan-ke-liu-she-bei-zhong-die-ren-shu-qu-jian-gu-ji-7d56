@@ -13,6 +13,8 @@
 | M5 人数估界 | 查看并复算人数估界 | `/api/m5_calculate` | `app/modules/m5_calculate/rules.py` | `tests/test_calculate.py` |
 | M6 日汇对账 | 查看并复算日汇对账 | `/api/m6_reconcile` | `app/modules/m6_reconcile/compare.py` | `tests/test_reconcile.py` |
 | M7 报告归档 | 查看并复算报告归档 | `/api/m7_archive` | `app/modules/m7_archive/export_out.py` | `tests/test_archive.py` |
+| 补发增量 | 追加观测并只重算涉及小时 | `POST /api/runs` + `supplement_of` | `app/modules/m5_calculate/increment.py` | `tests/test_supplement.py` |
+| 封存发布 | 版本化封存与发布指针 | `/api/runs/<id>/seals`、`/publish` | `app/store.py` | `tests/test_seal.py` |
 
 ## 陷阱登记
 
@@ -31,10 +33,19 @@
 | TRAP-26 | 旧版本复核 | 覆盖新结论 | 事务条件更新 | `app/store.py` | `tests/test_archive.py::test_stale_review` |
 | TRAP-11 | 时区混用 | 同刻不同桶 | UTC归整 | `app/modules/m2_mapping/coerce.py` | `tests/test_versions.py::test_same_instant` |
 | TRAP-19 | 三方约束矛盾 | 输出伪精确数 | 非负原子区域可行检查 | `app/modules/m5_calculate/rules.py` | `tests/test_calculate.py::test_three_way_contradiction` |
+| TRAP-27 | 分层抽样小数客次 | 观测层取整，交集与日汇对不上 | 观测层保留Decimal，公布层向外取整 | `app/rounding.py`、`app/modules/m5_calculate/rules.py` | `tests/test_calculate.py::test_observation_and_publish_use_same_policy` |
+| TRAP-28 | 少量客流被整成空区间 | 直接四舍五入导致下界高于上界 | 下界floor、上界ceil | `app/rounding.py` | `tests/test_calculate.py::test_small_fractional_footfall_not_isolated` |
+| TRAP-29 | 补发全量重算 | 无关小时漂移、版本膨胀 | 只重算受影响小时桶 | `app/modules/m5_calculate/increment.py` | `tests/test_supplement.py::test_supplement_keeps_untouched_hours_bit_identical` |
+| TRAP-30 | 同批重跑 | 重复封存、版本膨胀 | 证据摘要去重 | `app/modules/m7_archive/export_out.py`、`app/store.py` | `tests/test_seal.py::test_rerun_with_same_evidence_does_not_add_version` |
+| TRAP-31 | 发布失败 | 丢记录或覆盖旧版 | 记录与指针分事务，失败保留 | `app/store.py` | `tests/test_seal.py::test_api_publish_failure_returns_503_and_keeps_old` |
 
 ## 对账规则
 
-输入行数=采纳+隔离+空行+重复表头+完全重复；业务总数与计算证据独立求和。隔离行保留来源行、ID、原因码与原值。
+输入行数=采纳+隔离+空行+重复表头+完全重复；业务总数与计算证据独立求和。隔离行保留来源行、ID、原因码与原值。日汇下界/上界等于逐桶公布整数相加（`reconcile_check.consistent`），原始估计另列供审计回看。
+
+## 取整裁决
+
+正式区间在**公布层**取整：观测层（M1–M4）保留抽样小数用于精确交集与可行性判断；公布层（M5–M7）下界 `floor`、上界 `ceil`，整人签认。原始估计随每条计算与封存证据保存，按 floor/ceil 可反推。估界页面、日汇页面与封存 CSV 共用同一取舍。详见 `docs/DATA-DICTIONARY.md`。
 
 ## 已知不覆盖
 

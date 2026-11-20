@@ -1,6 +1,7 @@
 from collections import defaultdict
 from decimal import Decimal
 from datetime import datetime
+from app.rounding import normalize_number
 ALIASES={'东门':'A','中庭':'B','西门':'C','A':'A','B':'B','C':'C'}
 
 def apply(state):
@@ -12,9 +13,10 @@ def apply(state):
         factor={'人':Decimal(1),'千人':Decimal(1000)}.get(r['unit'])
         if factor is None:bad.append((r,'UNIT'));continue
         value*=factor
-        if value<0 or value!=value.to_integral_value() or value>1000000 or r['kind'] not in ('zone','pair','triple'):
+        if value<0 or value>1000000 or r['kind'] not in ('zone','pair','triple'):
             bad.append((r,'RANGE'));continue
-        r['count']=int(value)
+        # 观测层保留抽样小数，只做范围与单位校验；不在这里取整。
+        r['count']=normalize_number(value)
         if r['kind']=='pair':r['left'],r['right']=sorted([r['left'],r['right']])
         key=(r['bucket'],r['kind'],r['left'],r['right']);groups[key].append(r)
     selected=[]
@@ -24,5 +26,5 @@ def apply(state):
         else:selected.append(sorted(latest,key=lambda r:r['id'])[0])
     badlines={r['_line'] for r,_ in bad}
     state['rows']=[r for r in state['rows'] if r['_line'] not in badlines]
-    for r,c in bad:state['quarantine'].append({'line':r['_line'],'id':r['id'],'code':c,'raw':r['_raw']})
+    for r,c in bad:state['quarantine'].append({'source':r.get('_source','base'),'stage':3,'line':r['_line'],'id':r['id'],'code':c,'raw':r['_raw']})
     state['observations']=selected;return state

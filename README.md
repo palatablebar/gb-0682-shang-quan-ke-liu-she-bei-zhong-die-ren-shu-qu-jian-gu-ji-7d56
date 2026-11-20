@@ -22,7 +22,13 @@ docker compose up --build -d
 
 ## 核心规则
 
-无法识别个人时只输出满足区域交集约束的人数上下界；矛盾观测隔离而非伪造精确人数。完整数值、边界和异常定义见 `docs/DATA-DICTIONARY.md`。
+无法识别个人时只输出满足区域交集约束的人数上下界；矛盾观测隔离而非伪造精确人数。分层抽样的小数客次在观测层保留精确值，正式区间在公布层向外取整（下界 floor、上界 ceil），原始估计随证据封存。完整数值、边界和异常定义见 `docs/DATA-DICTIONARY.md`。
+
+## 补发与封存
+
+- 补发：`POST /api/runs` 带 `supplement_of`，只重算补发行涉及的小时桶；同一批重跑不新增封存版本。
+- 封存版本：`GET /api/runs/<id>/seals`；当前对外版本即其中 `published=true` 的一个。
+- 发布：`POST /api/runs/<id>/publish`。记录失败整体回滚；发布失败时新封存版本留存、旧发布版本继续对外。
 
 ## 验证
 

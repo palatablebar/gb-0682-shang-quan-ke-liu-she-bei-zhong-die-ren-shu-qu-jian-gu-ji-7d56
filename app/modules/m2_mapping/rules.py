@@ -18,11 +18,13 @@ def normalize(state):
                 if field in item and item[field] != '':item[field]=instant(item[field])
             key=(item['id'],str(item.get('version','1')))
             groups.setdefault(key,[]).append(item)
-        except DomainError as error:state['quarantine'].append({'line':row['_line'],'id':row.get('id',''),'code':error.code,'raw':row['_raw']})
+        except DomainError as error:
+            state['quarantine'].append({'source':row.get('_source','base'),'stage':2,'line':row['_line'],'id':row.get('id',''),'code':error.code,'raw':row['_raw']})
     for key,rows in groups.items():
         unique={str(sorted((k,str(v)) for k,v in r.items() if not k.startswith('_'))) for r in rows}
         if len(unique)>1:
-            for r in rows:state['quarantine'].append({'line':r['_line'],'id':r['id'],'code':'CONFLICT','raw':r['_raw']})
+            for r in rows:
+                state['quarantine'].append({'source':r.get('_source','base'),'stage':2,'line':r['_line'],'id':r['id'],'code':'CONFLICT','raw':r['_raw']})
         else:
             good.append(rows[0]);state['duplicate_count']+=len(rows)-1
     state['rows']=good

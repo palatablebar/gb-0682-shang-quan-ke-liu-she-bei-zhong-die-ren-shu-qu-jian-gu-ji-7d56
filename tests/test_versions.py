@@ -8,8 +8,10 @@ def test_same_instant():
     from app.modules.m2_mapping.coerce import instant
     # TRAP-11
     assert instant('2026-11-16T09:00:00+08:00')==instant('2026-11-16T01:00:00Z')
-def test_fraction_people_isolated(raw):
-    s=run(raw,{},2);s['rows'][0]['count']='1.5';a=apply(s);assert any(q['code']=='RANGE' for q in a['quarantine'])
+def test_fraction_people_kept_exact(raw):
+    # 观测层保留抽样小数，不因非整数而隔离；取整只发生在公布层。
+    s=run(raw,{},2);s['rows'][0]['count']='1.5';a=apply(s);assert not any(q['code']=='RANGE' for q in a['quarantine'])
+    assert str(a['observations'][0]['count'])=='1.5'
 def test_unknown_unit(raw):
     s=run(raw,{},2);s['rows'][0]['unit']='台';assert any(q['code']=='UNIT' for q in apply(s)['quarantine'])
 def test_newer_observation_wins(raw):
